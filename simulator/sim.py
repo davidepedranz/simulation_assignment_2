@@ -28,6 +28,7 @@ from log import Log
 ERASE_LINE = '\x1b[2K'
 
 
+# noinspection PyAttributeOutsideInit
 @Singleton
 class Sim:
     """
@@ -214,10 +215,10 @@ class Sim:
         if not first:
             sys.stdout.write('\r' + ERASE_LINE)
         # compute percentage
-        perc = min(100, int(math.floor(self.time/self.duration*100)))
+        perc = min(100, int(math.floor(self.time / self.duration * 100)))
         # print progress bar, percentage, and current element
         sys.stdout.write("[%-20s] %d%% (time = %f, total time = %f)" %
-                         ('='*(perc/5), perc, (self.time), self.duration))
+                         ('=' * (perc / 5), perc, self.time, self.duration))
         sys.stdout.flush()
 
     def get_params(self, run_number):

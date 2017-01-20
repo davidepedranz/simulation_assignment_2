@@ -4,11 +4,11 @@ import sim
 
 class Module:
     """
-    Defines a generic simulation module, implementing some basic functionalities
+    Defines a generic simulation module, implementing some basic functionality
     that all modules should inherit from
     """
 
-    # static class variable automatically incremented everytime a new module is
+    # static class variable automatically incremented every time a new module is
     # instantiated
     __modules_count = 0
 
@@ -20,11 +20,11 @@ class Module:
         self.sim = sim.Sim.Instance()
         # auto assign module id
         self.module_id = Module.__modules_count
-        Module.__modules_count = Module.__modules_count + 1
+        Module.__modules_count += 1
         # get data logger from simulator
         self.logger = self.sim.get_logger()
 
-    def initialize():
+    def initialize(self):
         """
         Initialization method called by the simulation for each newly
         instantiated module

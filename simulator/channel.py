@@ -17,7 +17,6 @@ import math
 import copy
 from module import Module
 from event import Event
-from events import Events
 
 
 class Channel(Module):
@@ -30,6 +29,7 @@ class Channel(Module):
 
     # communication range parameter in config file
     PAR_RANGE = "range"
+
     # speed of light in m/s, used to compute propagation delay
     SOL = 299792458.0
 
@@ -80,7 +80,7 @@ class Channel(Module):
         for n in self.nodes:
             # if the node n is within communication range of the newest node
             if n.get_id() != new_node.get_id() and \
-               self.distance(n, new_node) < self.range:
+                    self.distance(n, new_node) < self.range:
                 # add n to the neighbors of the new node and vice versa
                 new_node_neighbors.append(n)
                 self.neighbors[n.get_id()].append(new_node)
@@ -96,7 +96,7 @@ class Channel(Module):
         """
         for neighbor in self.neighbors[source_node.get_id()]:
             # compute propagation delay: distance / speed of light
-            propagation_delay = self.distance(source_node, neighbor) /\
+            propagation_delay = self.distance(source_node, neighbor) / \
                                 Channel.SOL
             # generate and schedule START_RX event at receiver
             # be sure to make a copy of the packet and not pass the same
@@ -104,6 +104,6 @@ class Channel(Module):
             # different ways. one node might be able to receive it, one node
             # might not
             event = Event(self.sim.get_time() + propagation_delay,
-                          Events.START_RX, neighbor, source_node,
+                          Event.START_RX, neighbor, source_node,
                           copy.deepcopy(packet))
             self.sim.schedule_event(event)

@@ -40,7 +40,7 @@ class Packet:
         self.duration = duration
         self.state = Packet.PKT_RECEIVING
         self.id = Packet.__packets_count
-        Packet.__packets_count = Packet.__packets_count + 1
+        Packet.__packets_count += 1
 
     def get_id(self):
         """

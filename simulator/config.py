@@ -56,6 +56,7 @@ class Config:
         # compute the output file name for run number 0
         self.compute_output_file_name()
 
+    # noinspection PyAttributeOutsideInit
     def map_parameters(self):
         """
         Creates a map from run number to the index of each parameter for that
@@ -86,7 +87,7 @@ class Config:
         count = 1
         for p in self.cfg[self.section].keys():
             if type(self.cfg[self.section][p]) == list:
-                count = count * len(self.cfg[self.section][p])
+                count *= len(self.cfg[self.section][p])
 
         # list of run ids, going from 0 to count - 1
         runs = range(count)
@@ -97,7 +98,7 @@ class Config:
             if type(self.cfg[self.section][p]) == list:
                 own_size = len(self.cfg[self.section][p])
                 par_map[p] = map((lambda x: x / prev_size % own_size), runs)
-                prev_size = prev_size * own_size
+                prev_size *= own_size
 
         self.runs_count = count
         self.par_map = par_map
@@ -117,6 +118,7 @@ class Config:
         self.run_number = run_number
         self.compute_output_file_name()
 
+    # noinspection PyMethodMayBeStatic
     def remove_comments(self, json_file):
         """
         Removes the comments from a json file (non standard)
@@ -157,6 +159,7 @@ class Config:
                   (param, self.section))
             sys.exit(1)
 
+    # noinspection PyAttributeOutsideInit
     def compute_output_file_name(self):
         """
         Computes output file name. The user can specify an output file name with
@@ -232,7 +235,7 @@ class Config:
                         obj = obj[var]
 
                     # finally get the value
-                    output = output + str(obj)
+                    output += str(obj)
                     # and change state
                     state = OUTVAR
                 else:
@@ -269,6 +272,6 @@ class Config:
         """
         params = ""
         config = self.cfg[self.section]
-        for par, val in self.par_map.iteritems():
+        for par, val in self.par_map.items():
             params += "%s: %s " % (par, str(config[par][val[run_number]]))
         return params

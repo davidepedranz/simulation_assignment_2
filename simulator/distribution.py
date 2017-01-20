@@ -72,7 +72,7 @@ class Distribution:
                 if Distribution.MEAN in config:
                     self.d = Exp(config[Distribution.MEAN])
                 else:
-                    self.d = Exp(1.0/config[Distribution.LAMBDA])
+                    self.d = Exp(1.0 / config[Distribution.LAMBDA])
             else:
                 print("Distribution error: unimplemented distribution %s",
                       config[Distribution.DISTRIBUTION])
@@ -135,7 +135,7 @@ class Exp:
         Constructor
         :param mean: mean value (1/lambda)
         """
-        self.l = 1/mean
+        self.l = 1 / mean
 
     def get_value(self):
         return random.expovariate(self.l)

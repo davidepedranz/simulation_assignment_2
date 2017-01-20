@@ -13,13 +13,27 @@
 #
 # Copyright (C) 2016 Michele Segata <segata@ccs-labs.org>
 
-from events import Events
-
 
 class Event:
     """
-    Defines the basic structure of an event
+    Defines the basic structure of an event.
     """
+
+    # start transmission event
+    START_TX = 0
+    # end transmission event
+    END_TX = 1
+    # start reception event
+    START_RX = 2
+    # end reception event
+    END_RX = 3
+    # packet arrival event
+    PACKET_ARRIVAL = 4
+    # end of processing after reception or transmission. can start operations
+    # again
+    END_PROC = 5
+    # timeout for RX state avoiding getting stuck into RX indefinitely
+    RX_TIMEOUT = 6
 
     def __init__(self, event_time, event_type, destination, source, obj=None):
         """
@@ -72,17 +86,17 @@ class Event:
         """
         print("Event time: %f" % self.event_time)
         t = ""
-        if self.event_type == Events.PACKET_ARRIVAL:
+        if self.event_type == Event.PACKET_ARRIVAL:
             t = "ARRIVAL"
-        elif self.event_type == Events.START_TX:
+        elif self.event_type == Event.START_TX:
             t = "START_TX"
-        elif self.event_type == Events.START_RX:
+        elif self.event_type == Event.START_RX:
             t = "START_RX"
-        elif self.event_type == Events.END_TX:
+        elif self.event_type == Event.END_TX:
             t = "END_TX"
-        elif self.event_type == Events.END_RX:
+        elif self.event_type == Event.END_RX:
             t = "END_RX"
-        elif self.event_type == Events.END_PROC:
+        elif self.event_type == Event.END_PROC:
             t = "END_PROC"
         print("Event type: %s" % t)
         print("Source node: %d" % self.source.get_id())
