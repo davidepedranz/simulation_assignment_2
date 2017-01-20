@@ -13,6 +13,7 @@
 #
 # Copyright (C) 2016 Michele Segata <segata@ccs-labs.org>
 
+import os
 import sim
 from packet import Packet
 
@@ -49,13 +50,18 @@ class Log:
         :param log_states: enable/disable logging of the state of nodes
         """
         self.sim = sim.Sim.Instance()
-        self.log_file = open(output_file, "w")
-        self.log_file.write("time,src,dst,event,size\n")
         self.log_packets = log_packets
         self.log_queue_drops = log_queue_drops
         self.log_arrivals = log_arrivals
         self.log_queue_lengths = log_queue_lengths
         self.log_states = log_states
+
+        # open the file
+        __location__ = os.path.realpath(
+            os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        path = os.path.join(__location__, output_file)
+        self.log_file = open(path, "w")
+        self.log_file.write("time,src,dst,event,size\n")
 
     def log_packet(self, source, destination, packet):
         """

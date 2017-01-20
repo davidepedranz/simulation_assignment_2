@@ -14,6 +14,7 @@
 # Copyright (C) 2016 Michele Segata <segata@ccs-labs.org>
 
 import json
+import os
 import re
 import sys
 
@@ -125,11 +126,16 @@ class Config:
         :param json_file: json file name
         :returns: the content of the file without comments
         """
+        # load the file
+        __location__ = os.path.realpath(
+            os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        path = os.path.join(__location__, json_file)
+        content = ''.join(open(path).readlines())
+
+        # looking for comments
         # regular expression to remove comments from json file
         cr = re.compile('(^)?[^\S\n]*/(?:\*(.*?)\*/[^\S\n]*|/[^\n]*)($)?',
                         re.DOTALL | re.MULTILINE)
-        content = ''.join(open(json_file).readlines())
-        # looking for comments
         match = cr.search(content)
         while match:
             # single line comment

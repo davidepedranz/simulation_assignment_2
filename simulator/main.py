@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -52,14 +53,16 @@ simulator.set_config(options.config, options.section)
 
 # list simulation runs and exit
 if options.list or options.verbose_list:
+    script_name = sys.argv[0]
     runs_count = simulator.get_runs_count()
     for i in range(runs_count):
         if options.list:
-            print("./main.py -c %s -s %s -r %d" %
-                  (options.config, options.section, i))
+            print("./%s -c %s -s %s -r %d" %
+                  (script_name, options.config, options.section, i))
         else:
-            print("./main.py -c %s -s %s -r %d: %s" %
-                  (options.config, options.section, i, simulator.get_params(i)))
+            print("%s -c %s -s %s -r %d: %s" %
+                  (script_name, options.config, options.section, i,
+                   simulator.get_params(i)))
     sys.exit(0)
 
 simulator.initialize(options.run)
