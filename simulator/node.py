@@ -45,6 +45,7 @@ class Node(Module):
     TX = 1
     RX = 2
     PROC = 3
+    WC = 4  # waiting for the channel to get free (then transmit immediately)
 
     def __init__(self, config, channel, x, y):
         """
@@ -163,36 +164,31 @@ class Node(Module):
         """
         new_packet = event.get_obj()
         if self.state == Node.IDLE:
-            if self.receiving_count == 0:
-                # node is idle: it will try to receive this packet
-                assert (self.current_pkt is None)
-                new_packet.set_state(Packet.PKT_RECEIVING)
-                self.current_pkt = new_packet
-                assert (self.timeout_event is None)
 
-                # create and schedule the RX timeout
-                self.timeout_event = Event(self.sim.get_time() +
-                                           self.timeout_time, Event.RX_TIMEOUT,
-                                           self, self, None)
-                self.sim.schedule_event(self.timeout_event)
-                self.change_state(Node.RX)
+            # with carrier sensing, this should be the only possibility
+            assert self.receiving_count == 0
 
-            else:
-                # there is another signal in the air but we are IDLE. this
-                # happens if we start receiving a frame while transmitting
-                # another. when we are done with the transmission we assume we
-                # are not able to detect that there is another frame in the air
-                # (we are not doing carrier sensing). In this case we assume we
-                # are not able to detect the new one and set that to corrupted
-                new_packet.set_state(Packet.PKT_CORRUPTED)
+            # node is idle: it will try to receive this packet
+            assert (self.current_pkt is None)
+            new_packet.set_state(Packet.PKT_RECEIVING)
+            self.current_pkt = new_packet
+            assert (self.timeout_event is None)
+
+            # create and schedule the RX timeout
+            self.timeout_event = Event(self.sim.get_time() +
+                                       self.timeout_time, Event.RX_TIMEOUT,
+                                       self, self, None)
+            self.sim.schedule_event(self.timeout_event)
+            self.change_state(Node.RX)
+
         else:
             # node is doing something
             if self.state == Node.RX and self.current_pkt is not None:
                 # the frame we are currently receiving is corrupted by a
                 # collision, if we have one
                 self.current_pkt.set_state(Packet.PKT_CORRUPTED)
-            # the same holds for the new incoming packet. either if we are in
-            # the RX, TX, or PROC state, we won't be able to decode it
+            # the same holds for the new incoming packet.
+            # if we are NOT in IDLE we won't be able to decode it
             new_packet.set_state(Packet.PKT_CORRUPTED)
         # in any case, we schedule a new event to handle the end of this frame
         end_rx = Event(self.sim.get_time() + new_packet.get_duration(),
@@ -206,6 +202,12 @@ class Node(Module):
         Handles the end of a reception
         :param event: the END_RX event
         """
+
+        # with carrier sensing, this event should not happen in IDLE
+        # also, I am receiving at least one packet
+        assert (self.state != self.IDLE)
+        assert (self.receiving_count >= 1)
+
         packet = event.get_obj()
 
         # if the packet that ends is the one that we are trying to receive, but
@@ -258,7 +260,23 @@ class Node(Module):
                 # delete the timeout event
                 self.sim.cancel_event(self.timeout_event)
                 self.timeout_event = None
+
+        # trivial carrier sensing
+        elif self.state == Node.WC:
+
+            # if count = 1, I am receiving the last packet in the channel
+            # I can exit the carrier sensing and go either to IDLE of TX
+            if self.receiving_count == 1:
+                if len(self.queue) == 0:
+                    # resuming operations but nothing to transmit. back to IDLE
+                    self.change_state(Node.IDLE)
+                else:
+                    # there is a packet ready, transmit it
+                    self.dequeue_and_transmit_packer()
+
+        # remove packet from the channel
         self.receiving_count -= 1
+
         # log packet
         self.logger.log_packet(event.get_source(), self, packet)
 
@@ -297,15 +315,24 @@ class Node(Module):
         :param event: the END_PROC event
         """
         assert (self.state == Node.PROC)
-        if len(self.queue) == 0:
-            # resuming operations but nothing to transmit. back to IDLE
-            self.change_state(Node.IDLE)
+        assert (self.receiving_count >= 0)
+        assert (len(self.queue) >= 0)
+
+        # nothing in the air... IDLE / TX
+        if self.receiving_count == 0:
+            if len(self.queue) == 0:
+                # resuming operations but nothing to transmit. back to IDLE
+                self.change_state(Node.IDLE)
+            else:
+                # there is a packet ready, transmit it
+                packet_size = self.queue.pop(0)
+                self.transmit_packet(packet_size)
+                self.change_state(Node.TX)
+                self.logger.log_queue_length(self, len(self.queue))
+
+        # something there... do carrier sensing... WAITING_FREE_CHANNEL
         else:
-            # there is a packet ready, transmit it
-            packet_size = self.queue.pop(0)
-            self.transmit_packet(packet_size)
-            self.change_state(Node.TX)
-            self.logger.log_queue_length(self, len(self.queue))
+            self.change_state(Node.WC)
 
     def switch_to_proc(self):
         """
@@ -332,6 +359,16 @@ class Node(Module):
                        self, packet)
         self.sim.schedule_event(end_tx)
         self.current_pkt = packet
+
+    def dequeue_and_transmit_packer(self):
+        """
+        Utility method to transmit the next packet in the queue.
+        """
+        assert (len(self.queue) > 0)
+        packet_size = self.queue.pop(0)
+        self.transmit_packet(packet_size)
+        self.change_state(Node.TX)
+        self.logger.log_queue_length(self, len(self.queue))
 
     def change_state(self, state):
         """
