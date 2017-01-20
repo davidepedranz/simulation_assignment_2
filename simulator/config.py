@@ -44,7 +44,7 @@ class Config:
             self.cfg = json.loads(json_content)
         except Exception as e:
             print("Unable to parse " + self.config_file)
-            print(e.message)
+            print(e)
             sys.exit(1)
         if section not in self.cfg:
             print("Error: the file %s does not contain section %s",

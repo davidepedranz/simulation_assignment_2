@@ -87,6 +87,17 @@ class Node(Module):
         """
         self.schedule_next_arrival()
 
+    def schedule_next_arrival(self):
+        """
+        Schedules a new arrival event
+        """
+        # extract random value for next arrival
+        arrival = self.interarrival.get_value()
+        # generate an event setting this node as destination
+        event = Event(self.sim.get_time() + arrival, Event.PACKET_ARRIVAL,
+                      self, self)
+        self.sim.schedule_event(event)
+
     def handle_event(self, event):
         """
         Handles events notified to the node
@@ -109,36 +120,26 @@ class Node(Module):
                   " can't be handled", (self.get_id(), event.get_type()))
             sys.exit(1)
 
-    def schedule_next_arrival(self):
-        """
-        Schedules a new arrival event
-        """
-        # extract random value for next arrival
-        arrival = self.interarrival.get_value()
-        # generate an event setting this node as destination
-        event = Event(self.sim.get_time() + arrival, Event.PACKET_ARRIVAL,
-                      self, self)
-        self.sim.schedule_event(event)
-
     def handle_arrival(self):
         """
         Handles a packet arrival
         """
         # draw packet size from the distribution
         packet_size = self.size.get_value()
+
         # log the arrival
         self.logger.log_arrival(self, packet_size)
+
+        # if IDLE -> transit
         if self.state == Node.IDLE:
-            # if we are in a idle state, then there must be no packets in the
-            # queue
+            # if we are in a idle state, there must be no packets in the queue
             assert (len(self.queue) == 0)
             # if current state is IDLE and there are no packets in the queue, we
             # can start transmitting
             self.transmit_packet(packet_size)
-            self.state = Node.TX
-            self.logger.log_state(self, Node.TX)
+            self.change_state(Node.TX)
         else:
-            # if we are either transmitting or receiving, packet must be queued
+            # if we are doing something, packet must be queued
             if self.queue_size == 0 or len(self.queue) < self.queue_size:
                 # if queue size is infinite or there is still space
                 self.queue.append(packet_size)
@@ -146,6 +147,7 @@ class Node(Module):
             else:
                 # if there is no space left, we drop the packet and log
                 self.logger.log_queue_drop(self, packet_size)
+
         # schedule next arrival
         self.schedule_next_arrival()
 
@@ -161,14 +163,15 @@ class Node(Module):
                 assert (self.current_pkt is None)
                 new_packet.set_state(Packet.PKT_RECEIVING)
                 self.current_pkt = new_packet
-                self.state = Node.RX
                 assert (self.timeout_event is None)
+
                 # create and schedule the RX timeout
                 self.timeout_event = Event(self.sim.get_time() +
                                            self.timeout_time, Event.RX_TIMEOUT,
                                            self, self, None)
                 self.sim.schedule_event(self.timeout_event)
-                self.logger.log_state(self, Node.RX)
+                self.change_state(Node.RX)
+
             else:
                 # there is another signal in the air but we are IDLE. this
                 # happens if we start receiving a frame while transmitting
@@ -178,7 +181,7 @@ class Node(Module):
                 # are not able to detect the new one and set that to corrupted
                 new_packet.set_state(Packet.PKT_CORRUPTED)
         else:
-            # node is either receiving or transmitting
+            # node is doing something
             if self.state == Node.RX and self.current_pkt is not None:
                 # the frame we are currently receiving is corrupted by a
                 # collision, if we have one
@@ -199,11 +202,14 @@ class Node(Module):
         :param event: the END_RX event
         """
         packet = event.get_obj()
+
         # if the packet that ends is the one that we are trying to receive, but
         # we are not in the RX state, then something is very wrong
         if self.current_pkt is not None and \
                 packet.get_id() == self.current_pkt.get_id():
             assert (self.state == Node.RX)
+
+        # ignore the packet if in some state other than RX
         if self.state == Node.RX:
             if packet.get_state() == Packet.PKT_RECEIVING:
                 # the packet is not in a corrupted state: we successfully
@@ -230,17 +236,6 @@ class Node(Module):
         self.receiving_count -= 1
         # log packet
         self.logger.log_packet(event.get_source(), self, packet)
-
-    def switch_to_proc(self):
-        """
-        Switches to the processing state and schedules the end_proc event
-        """
-        proc_time = self.proc_time.get_value()
-        proc = Event(self.sim.get_time() + proc_time, Event.END_PROC, self,
-                     self)
-        self.sim.schedule_event(proc)
-        self.state = Node.PROC
-        self.logger.log_state(self, Node.PROC)
 
     # noinspection PyUnusedLocal
     def handle_rx_timeout(self, event):
@@ -279,15 +274,23 @@ class Node(Module):
         assert (self.state == Node.PROC)
         if len(self.queue) == 0:
             # resuming operations but nothing to transmit. back to IDLE
-            self.state = Node.IDLE
-            self.logger.log_state(self, Node.IDLE)
+            self.change_state(Node.IDLE)
         else:
             # there is a packet ready, transmit it
             packet_size = self.queue.pop(0)
             self.transmit_packet(packet_size)
-            self.state = Node.TX
-            self.logger.log_state(self, Node.TX)
+            self.change_state(Node.TX)
             self.logger.log_queue_length(self, len(self.queue))
+
+    def switch_to_proc(self):
+        """
+        Switches to the processing state and schedules the end_proc event
+        """
+        proc_time = self.proc_time.get_value()
+        proc = Event(self.sim.get_time() + proc_time, Event.END_PROC, self,
+                     self)
+        self.sim.schedule_event(proc)
+        self.change_state(Node.PROC)
 
     def transmit_packet(self, packet_size):
         """
@@ -304,6 +307,14 @@ class Node(Module):
                        self, packet)
         self.sim.schedule_event(end_tx)
         self.current_pkt = packet
+
+    def change_state(self, state):
+        """
+        Utility method to change the state of this node.
+        :param state: New state to set.
+        """
+        self.state = state
+        self.logger.log_state(self, state)
 
     def get_posx(self):
         """
