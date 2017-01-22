@@ -21,11 +21,13 @@ from pandas import DataFrame, Series, concat, read_csv, read_hdf
 import matplotlib.pyplot as plt
 
 # possible packet states
+# NB: make sure this codes match to the one used by the Log class
 PKT_RECEIVING = 0
 PKT_RECEIVED = 1
 PKT_CORRUPTED = 2
-PKT_GENERATED = 3
-PKT_QUEUE_DROPPED = 4
+PKT_CORRUPTED_BY_CHANNEL = 3
+PKT_GENERATED = 10
+PKT_QUEUE_DROPPED = 11
 
 
 def is_number(string):
@@ -80,14 +82,21 @@ def statistics(x, sim_time):
     Computes throughput, collision rate, and drop rate for a specific node
     and a specific simulation
     """
-    inc_packets = x.loc[(x.event == PKT_RECEIVED) | (x.event == PKT_CORRUPTED)]
-    rcv_packets = x.loc[x.event == PKT_RECEIVED]
-    gen_packets = x.loc[x.event == PKT_GENERATED]
-    drp_packets = x.loc[x.event == PKT_QUEUE_DROPPED]
+    rcv_packets_df = x.loc[x.event == PKT_RECEIVED]
+
+    # number of packets for each type
+    rcv_packets = len(rcv_packets_df)
+    crp_packets = len(x.loc[x.event == PKT_CORRUPTED])
+    crp_ch_packets = len(x.loc[x.event == PKT_CORRUPTED_BY_CHANNEL])
+    gen_packets = len(x.loc[x.event == PKT_GENERATED])
+    drp_packets = len(x.loc[x.event == PKT_QUEUE_DROPPED])
+    inc_packets = rcv_packets + crp_packets + crp_ch_packets
+
     return DataFrame({
-        'tr': [rcv_packets['size'].sum() * 8 / sim_time / 1024 ** 2],
-        'cr': [1 - float(len(rcv_packets)) / len(inc_packets)],
-        'dr': [float(len(drp_packets)) / len(gen_packets)]
+        'tr': [rcv_packets_df['size'].sum() * 8 / sim_time / 1024 ** 2],
+        'cr': [float(crp_packets) / inc_packets],
+        'dr': [float(drp_packets) / gen_packets],
+        'cc': [float(crp_ch_packets) / inc_packets]
     })
 
 
@@ -148,6 +157,7 @@ def plot_individual_statistic(stat, folder):
         crs = []
         drs = []
         trs = []
+        ccs = []
 
         # extract nodes and metrics for each node
         nodes = df['dst'].unique()
@@ -155,6 +165,7 @@ def plot_individual_statistic(stat, folder):
             crs.append(list(df.query('dst==' + str(n))['cr']))
             drs.append(list(df.query('dst==' + str(n))['dr']))
             trs.append(list(df.query('dst==' + str(n))['tr']))
+            ccs.append(list(df.query('dst==' + str(n))['cc']))
 
         # plot the 3 metrics
         base = '0_plot_%s_' % v
@@ -167,6 +178,9 @@ def plot_individual_statistic(stat, folder):
         plot_individual_metric(nodes, loads, trs, folder + base + 'trs.png',
                                'Throughput', 'Throughput at receiver (Mbps)',
                                y_lim=(0, 3))
+        plot_individual_metric(nodes, loads, ccs, folder + base + 'ccs.png',
+                               'Channel Corruption Rate',
+                               'Channel corruption rate (Mbps)')
 
 
 def aggregate_statistics(stats, folder):
@@ -182,6 +196,9 @@ def aggregate_statistics(stats, folder):
         },
         'tr': {
             'tr_mean': 'mean'
+        },
+        'cc': {
+            'cc_mean': 'mean'
         }
     })
 
@@ -194,6 +211,7 @@ def aggregate_statistics(stats, folder):
     crs = []
     drs = []
     trs = []
+    ccs = []
 
     # extract metrics for each simulator
     for v in versions:
@@ -205,6 +223,7 @@ def aggregate_statistics(stats, folder):
         crs.append(list(df['cr']))
         drs.append(list(df['dr']))
         trs.append(list(df['tr']))
+        ccs.append(list(df['cc']))
 
     # plot
     base = '1_compare_simulators_'
@@ -217,6 +236,9 @@ def aggregate_statistics(stats, folder):
     plot_aggregated_metric(versions, loads, trs, folder + base + 'trs.png',
                            'Throughput', 'Throughput at receiver (Mbps)',
                            y_lim=(0, 3))
+    plot_aggregated_metric(versions, loads, ccs, folder + base + 'ccs.png',
+                           'Channel Corruption Rate',
+                           'Channel corruption rate (Mbps)')
 
     return agg
 
