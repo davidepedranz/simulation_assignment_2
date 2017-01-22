@@ -15,7 +15,7 @@
 
 import sys
 from module import Module
-from distribution import Distribution, Uniform
+from distribution import Distribution, Uniform, Exp
 from event import Event
 from packet import Packet
 
@@ -39,6 +39,8 @@ class Node(Module):
     MAXSIZE = "maxsize"
     # type of propagation
     PROPAGATION = "propagation"
+    # p-persistence
+    PERSISTENCE = "persistence"
 
     # list of possible states for this node
     IDLE = 0
@@ -46,6 +48,7 @@ class Node(Module):
     RX = 2
     PROC = 3
     WC = 4  # waiting for the channel to get free (then transmit immediately)
+    WT = 5  # waiting random exp time to transmit (NB: channel may NOT be free)
 
     def __init__(self, config, channel, x, y):
         """
@@ -78,11 +81,17 @@ class Node(Module):
         # count the number of frames currently under reception
         self.receiving_count = 0
         # timeout event used to avoid being stuck in the RX state
-        self.timeout_event = None
+        self.timeout_rx_event = None
+        # timeout used for the p-persistence
+        self.timeout_wt_event = None
+        # time needed to transmit a packet with the maximum size
+        self.packet_max_tx_time = self.maxsize * 8.0 / self.datarate
+        # p-persistence probability [simple carrier sensing]
+        self.p_persistence = config.get_param(Node.PERSISTENCE)
         # timeout time for the rx timeout event. set as the time needed to
         # transmit a packet of the maximum size plus a small amount of 10
         # microseconds
-        self.timeout_time = self.maxsize * 8.0 / self.datarate + 10e-6
+        self.timeout_time = self.packet_max_tx_time + 10e-6
         # determine the type of propagation..
         self.realistic_propagation = config.get_param(
             Node.PROPAGATION) == "realistic"
@@ -121,6 +130,8 @@ class Node(Module):
             self.handle_end_proc(event)
         elif event.get_type() == Event.RX_TIMEOUT:
             self.handle_rx_timeout(event)
+        elif event.get_type() == Event.WT_TIMEOUT:
+            self.handle_wt_timeout(event)
         else:
             print("Node %d has received a notification for event type %d which"
                   " can't be handled", (self.get_id(), event.get_type()))
@@ -163,23 +174,24 @@ class Node(Module):
         :param event: the RX event including the frame being received
         """
         new_packet = event.get_obj()
+
+        # node is idle: it will try to receive this packet
         if self.state == Node.IDLE:
 
             # with carrier sensing, this should be the only possibility
             assert self.receiving_count == 0
+            self.receive_packet(new_packet)
 
-            # node is idle: it will try to receive this packet
-            assert (self.current_pkt is None)
-            new_packet.set_state(Packet.PKT_RECEIVING)
-            self.current_pkt = new_packet
-            assert (self.timeout_event is None)
+        # I am waiting to transmit... but I can receive packets
+        # receive the packet only if it is the only one in the air
+        elif self.state == Node.WT and self.receiving_count == 0:
 
-            # create and schedule the RX timeout
-            self.timeout_event = Event(self.sim.get_time() +
-                                       self.timeout_time, Event.RX_TIMEOUT,
-                                       self, self, None)
-            self.sim.schedule_event(self.timeout_event)
-            self.change_state(Node.RX)
+            # delete the timeout
+            self.sim.cancel_event(self.timeout_wt_event)
+            self.timeout_wt_event = None
+
+            # receive the packet
+            self.receive_packet(new_packet)
 
         else:
             # node is doing something
@@ -258,8 +270,8 @@ class Node(Module):
                 # before restarting operations
                 self.switch_to_proc()
                 # delete the timeout event
-                self.sim.cancel_event(self.timeout_event)
-                self.timeout_event = None
+                self.sim.cancel_event(self.timeout_rx_event)
+                self.timeout_rx_event = None
 
         # trivial carrier sensing
         elif self.state == Node.WC:
@@ -294,7 +306,7 @@ class Node(Module):
         assert (self.current_pkt is None)
         # the timeout forces us to switch to the PROC state
         self.switch_to_proc()
-        self.timeout_event = None
+        self.timeout_rx_event = None
 
     def handle_end_tx(self, event):
         """
@@ -330,9 +342,38 @@ class Node(Module):
                 self.change_state(Node.TX)
                 self.logger.log_queue_length(self, len(self.queue))
 
-        # something there... do carrier sensing... WAITING_FREE_CHANNEL
+        # something there... do carrier sensing... WC or WT
         else:
-            self.change_state(Node.WC)
+            # NB: if nothing to transmit, just wait for the channel to get free
+            # to then move to IDLE
+            if len(self.queue) == 0:
+                self.change_state(Node.WC)
+            else:
+                self.schedule_packet_transmission()
+
+    # noinspection PyUnusedLocal
+    def handle_wt_timeout(self, event):
+        """
+        Handles the end of the processing period, resuming operations
+        :param event: the WT_TIMEOUT event
+        """
+
+        # when this event happens, we can only be in WT state
+        # each time I move out from WT, I cancel the timeout
+        assert (self.state == Node.WT)
+
+        # remove timeout from node
+        self.timeout_wt_event = None
+
+        # if the channel is free, I can transmit
+        if self.receiving_count == 0:
+            self.dequeue_and_transmit_packer()
+
+        # channel is NOT free... repeat the procedure
+        else:
+            self.schedule_packet_transmission()
+
+        pass
 
     def switch_to_proc(self):
         """
@@ -343,6 +384,21 @@ class Node(Module):
                      self)
         self.sim.schedule_event(proc)
         self.change_state(Node.PROC)
+
+    def receive_packet(self, new_packet):
+        """
+        Receive a packet. NB: this function assumes that the channel is free!
+        """
+        assert (self.current_pkt is None)
+        new_packet.set_state(Packet.PKT_RECEIVING)
+        self.current_pkt = new_packet
+        assert (self.timeout_rx_event is None)
+        # create and schedule the RX timeout
+        self.timeout_rx_event = Event(self.sim.get_time() +
+                                      self.timeout_time, Event.RX_TIMEOUT,
+                                      self, self, None)
+        self.sim.schedule_event(self.timeout_rx_event)
+        self.change_state(Node.RX)
 
     def transmit_packet(self, packet_size):
         """
@@ -370,11 +426,40 @@ class Node(Module):
         self.change_state(Node.TX)
         self.logger.log_queue_length(self, len(self.queue))
 
+    def schedule_packet_transmission(self):
+        """
+        Schedule the next packet transmission, using p-persistence.
+        p is the probability to transmit immediately after the
+        channel gets free (WC).
+        """
+        assert (len(self.queue) > 0)
+
+        # simple carrier sensing - p-persistence
+        # extract a random number from a uniform distribution
+        # if number >= p, else schedule transmission
+        # after exponential time
+        random = Uniform(0, 1).get_value()
+
+        # will transmit this packet immediately when channel gets free
+        if random >= self.p_persistence:
+            self.change_state(Node.WC)
+
+        # wait random exponential time... then try again
+        # average time is 10 * time to send biggest packet allowed
+        else:
+            max_tx_time = Exp(self.packet_max_tx_time * 10).get_value()
+            self.timeout_wt_event = Event(self.sim.get_time() + max_tx_time,
+                                          Event.WT_TIMEOUT, self, self)
+            self.sim.schedule_event(self.timeout_wt_event)
+            self.change_state(Node.WT)
+
     def change_state(self, state):
         """
         Utility method to change the state of this node.
         :param state: New state to set.
         """
+        if state != Node.WT:
+            assert self.timeout_wt_event is None
         self.state = state
         self.logger.log_state(self, state)
 

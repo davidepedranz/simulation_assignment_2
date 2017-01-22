@@ -34,6 +34,8 @@ class Event:
     END_PROC = 5
     # timeout for RX state avoiding getting stuck into RX indefinitely
     RX_TIMEOUT = 6
+    # timeout for WT state: p-persistence implementation
+    WT_TIMEOUT = 7
 
     def __init__(self, event_time, event_type, destination, source, obj=None):
         """
