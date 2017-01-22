@@ -25,10 +25,12 @@ class Log:
 
     # packet has been correctly received
     LOG_RECEIVED = Packet.PKT_RECEIVED
-    # packet has been corrupted due to, for example, a collision
+    # packet has been corrupted due to a collision
     LOG_CORRUPTED = Packet.PKT_CORRUPTED
+    # packet has been corrupted by the channel during transmission
+    PKT_CORRUPTED_BY_CHANNEL = Packet.PKT_CORRUPTED_BY_CHANNEL
     # packet has just been generated
-    LOG_GENERATED = LOG_CORRUPTED + 1
+    LOG_GENERATED = max(10, PKT_CORRUPTED_BY_CHANNEL)
     # packet has been dropped because there is no space in the queue
     LOG_QUEUE_DROPPED = LOG_GENERATED + 1
     # use to log queue size in time

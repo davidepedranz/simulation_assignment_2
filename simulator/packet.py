@@ -27,8 +27,10 @@ class Packet:
     PKT_RECEIVING = 0
     # packet has been correctly received
     PKT_RECEIVED = 1
-    # packet has been corrupted due to, for example, a collision
+    # packet has been corrupted due to a collision
     PKT_CORRUPTED = 2
+    # packet has been corrupted by the channel during transmission
+    PKT_CORRUPTED_BY_CHANNEL = 3
 
     def __init__(self, size, duration):
         """
