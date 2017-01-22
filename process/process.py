@@ -284,9 +284,9 @@ def main():
         print('\nLoading CSV files...')
         all_data = DataFrame()
         data_files = get_data_files(res_folder, ".csv")
-        for f in data_files:
+        for (i, f) in enumerate(data_files):
             full_path = "%s/%s" % (res_folder, f)
-            print(' -> %s' % f)
+            print(' -> %i of %i - %s' % (i, len(data_files), f))
             # get the simulation parameters from the file name
             pars = get_params(full_path,
                               ['prefix', 'simulator', 'lambda', 'seed'],
