@@ -87,7 +87,7 @@ class Channel(Module):
         # save neighbors for the new node in the map
         self.neighbors[new_node.get_id()] = new_node_neighbors
 
-    def start_transmission(self, source_node, packet=None):
+    def start_transmission(self, source_node, packet):
         """
         Begins transmission of a frame on the channel, notifying all neighbors
         about such event
@@ -95,9 +95,17 @@ class Channel(Module):
         :param packet: packet being transmitted
         """
         for neighbor in self.neighbors[source_node.get_id()]:
+            # compute the distance from the receiver
+            distance = self.distance(source_node, neighbor)
+
+            # compute the probability of correct reception (if no collision)
+            # according to the "Realistic Propagation" model
+            prob_correct = 1 - distance / self.range
+            packet.set_prob_correct(prob_correct)
+
             # compute propagation delay: distance / speed of light
-            propagation_delay = self.distance(source_node, neighbor) / \
-                                Channel.SOL
+            propagation_delay = distance / Channel.SOL
+
             # generate and schedule START_RX event at receiver
             # be sure to make a copy of the packet and not pass the same
             # reference to multiple nodes, as they will process the packet in

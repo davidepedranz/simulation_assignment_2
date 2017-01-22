@@ -15,7 +15,7 @@
 
 import sys
 from module import Module
-from distribution import Distribution
+from distribution import Distribution, Uniform
 from event import Event
 from packet import Packet
 
@@ -37,6 +37,8 @@ class Node(Module):
     PROC_TIME = "processing"
     # max packet size (bytes)
     MAXSIZE = "maxsize"
+    # type of propagation
+    PROPAGATION = "propagation"
 
     # list of possible states for this node
     IDLE = 0
@@ -80,6 +82,9 @@ class Node(Module):
         # transmit a packet of the maximum size plus a small amount of 10
         # microseconds
         self.timeout_time = self.maxsize * 8.0 / self.datarate + 10e-6
+        # determine the type of propagation..
+        self.realistic_propagation = config.get_param(
+            Node.PROPAGATION) == "realistic"
 
     def initialize(self):
         """
@@ -212,12 +217,32 @@ class Node(Module):
         # ignore the packet if in some state other than RX
         if self.state == Node.RX:
             if packet.get_state() == Packet.PKT_RECEIVING:
-                # the packet is not in a corrupted state: we successfully
-                # received it
-                packet.set_state(Packet.PKT_RECEIVED)
+
+                # "Realistic Propagation" model
+                # if here, there was NO collision... the packet may be good
+                # extract: random ~ Unif(0,1)
+                if self.realistic_propagation:
+                    random = Uniform(0, 1).get_value()
+                    prob_correct = packet.get_prob_correct()
+
+                    if random >= prob_correct:
+                        # the packet is not in a corrupted state:
+                        # we successfully received it
+                        packet.set_state(Packet.PKT_RECEIVED)
+                    else:
+                        # we were unlucky: the channel corrupted the packet
+                        packet.set_state(Packet.PKT_CORRUPTED_BY_CHANNEL)
+
+                # original propagation model
+                else:
+                    # the packet is not in a corrupted state:
+                    # we successfully received it
+                    packet.set_state(Packet.PKT_RECEIVED)
+
                 # just to be sure: we can only correctly receive the packet we
                 # were trying to decode
                 assert (packet.get_id() == self.current_pkt.get_id())
+
             # we might be in RX state but have no current packet. this can
             # happen when a packet overlaps with the current one being received
             # and the one being received terminates earlier. we assume to stay

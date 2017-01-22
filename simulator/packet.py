@@ -42,6 +42,7 @@ class Packet:
         self.duration = duration
         self.state = Packet.PKT_RECEIVING
         self.id = Packet.__packets_count
+        self.prob_correct = 1
         Packet.__packets_count += 1
 
     def get_id(self):
@@ -78,6 +79,23 @@ class Packet:
         :returns: packet duration in seconds
         """
         return self.duration
+
+    def get_prob_correct(self):
+        """
+        Return the probability of correct receive this packet if there is no
+        collision, according to the "Realistic propagation" model.
+        NB: this probability is set by the CHANNEL.
+        :return: Probability of correct receiving this packet (if no collisions)
+        """
+        assert self.prob_correct is not None
+        return self.prob_correct
+
+    def set_prob_correct(self, prob_correct):
+        """
+        Set the probability of correct receive this packet if there is no
+        collision. This probability is set by the CHANNEL.
+        """
+        self.prob_correct = prob_correct
 
     def dump_packet(self):
         """
