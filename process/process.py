@@ -18,6 +18,10 @@
 import os
 import sys
 from pandas import DataFrame, Series, concat, read_csv, read_hdf
+
+import matplotlib as mpl
+
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 # possible packet states
