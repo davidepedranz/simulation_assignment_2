@@ -61,8 +61,8 @@ def get_params(filename, fields, fields_index):
     Splits the name of an output file by _ and extracts the values of
     simulation parameters
     """
-    d = DataFrame()
     p = os.path.splitext(os.path.basename(filename))[0].split("_")
+    d = DataFrame()
     for f in fields_index:
         v = p[f]
         if is_number(v):
@@ -78,6 +78,7 @@ def offered_load(l, n_nodes, packet_size=(1460 + 32) / 2):
     Total offered load in Mbps.
     'l' is the Lambda parameter of distribution: number of packets / s.
     """
+    assert l.dtype == 'float64'
     return l * n_nodes * packet_size * 8 / 1024 / 1024
 
 
@@ -109,12 +110,17 @@ def compute_statistics(d, sim_time):
     Computes throughput, collision rate, and drop rate for all nodes and
     simulation runs
     """
-    print('Computing statistics...')
+
+    # TODO: consider the seed
+
     n_nodes = len(d['dst'].unique())
     d['load'] = offered_load(d['lambda'], n_nodes)
-    grouped = d.groupby(['simulator', 'lambda', 'load', 'dst'])
-    thr = grouped.apply(lambda x: statistics(x, sim_time))
-    return thr.reset_index(level=4, drop=True).reset_index()
+    grouped = d.groupby(['lambda', 'load', 'dst', 'seed'])
+    stats_by_seed = grouped.apply(lambda x: statistics(x, sim_time)) \
+        .reset_index(level=4, drop=True).reset_index()
+    mean_seed = stats_by_seed.groupby(['load', 'seed']).mean().reset_index(
+        level=1, drop=True).reset_index().groupby('load').first().reset_index()
+    return mean_seed
 
 
 def replicate_rows(d, fields, n):
@@ -281,48 +287,94 @@ def main():
     if len(sys.argv) != 1:
         res_folder = sys.argv[1]
 
-    aggregated_file = "%s/all_data.h5" % res_folder
+    # get the list of files
+    sim_from_name = lambda name: name.split('_')[1]
+    all_files = get_data_files(res_folder, ".csv")
+    simulations = set(map(sim_from_name, all_files))
 
-    if not os.path.isfile(aggregated_file):
-        # if no aggregated file, load all csv files into a single dataframe
-        print('\nLoading CSV files...')
-        all_data = DataFrame()
-        data_files = get_data_files(res_folder, ".csv")
-        for (i, f) in enumerate(data_files):
-            full_path = "%s/%s" % (res_folder, f)
-            print(' -> %i of %i - %s' % (i, len(data_files), f))
-            # get the simulation parameters from the file name
-            pars = get_params(full_path,
-                              ['prefix', 'simulator', 'lambda', 'seed'],
-                              [1, 2, 3])
-            d = read_csv(full_path)
-            # replicate the parameters n times, with n being the number of
-            # records in the csv file
-            ext_pars = replicate_rows(pars, ['simulator', 'lambda', 'seed'],
-                                      len(d))
-            # join the csv data file with the parameters
-            d = d.join(ext_pars)
-            all_data = concat([all_data, d])
+    # store all statistics in memory
+    all_statistics = DataFrame()
 
-        # store the full database to a single file
-        all_data.to_hdf(aggregated_file, 'table')
+    # compute the statistics one simulator at a time
+    for i, simulation in enumerate(simulations):
+        print ('\nAnalyze simulation "%s" [%i of %i]' % (
+            simulation, i + 1, len(simulations)))
 
-    else:
-        # otherwise simply load the aggregated file
-        print('\nCSV files already processed. Using H5 aggregated file...')
-        all_data = read_hdf(aggregated_file, 'table')
+        # check if an aggregated file was already computed for this statistic
+        aggregated_file = "%s/aggregated_%s.h5" % (res_folder, simulation)
 
-    # get simulation duration and number of nodes
-    sim_time = all_data.time.max()
+        # not found -> load files and aggregate
+        if not os.path.isfile(aggregated_file):
+            print(' -> Aggregated file not found... load CSVs')
 
-    # compute the statistics
-    stats = compute_statistics(all_data, sim_time)
+            # Pandas frame where to store the data
+            data = DataFrame()
 
-    # plot graphs for each simulator
-    plot_individual_statistic(stats, res_folder)
+            # compute the files to load
+            sim_files = filter(lambda name: sim_from_name(name) == simulation,
+                               all_files)
+
+            # load all CSV files
+            for (j, f) in enumerate(sim_files):
+                print('    -> %i of %i - %s' % (j + 1, len(sim_files), f))
+
+                # read the CSV
+                path = "%s/%s" % (res_folder, f)
+                d = read_csv(path)
+
+                split = os.path.splitext(os.path.basename(f))[0].split("_")
+                lambda_par = float(split[2])
+                seed_par = float(split[3])
+
+                d['lambda'] = lambda_par
+                d['seed'] = seed_par
+
+                # # get the simulation parameters from the file name
+                # pars = get_params(f, ['prefix', 'simulator', 'lambda', 'seed'],
+                #                   [2, 3])
+                #
+                # # replicate the parameters n times, with n being the number of
+                # # records in the csv file
+                # ext_pars = replicate_rows(pars, ['lambda', 'seed'], len(d))
+                #
+                # # join the csv data file with the parameters
+                # d = d.join(ext_pars)
+
+                # add data to the container
+                data = concat([data, d])
+
+            # store the full database to a single file
+            data.to_hdf(aggregated_file, 'table')
+
+        # the file was already present
+        else:
+            print(' -> Aggregated file found... load it')
+            data = read_hdf(aggregated_file, 'table')
+
+        # compute stats
+        print(' -> Computing statistics')
+
+        # get simulation duration and number of nodes
+        sim_time = data.time.max()
+
+        # compute the statistics
+        stats = compute_statistics(data, sim_time)
+
+        # add column 'simulator'
+        stats.insert(0, 'simulator', simulation)
+        print (stats)
+
+        # plot graphs for each simulator
+        plot_individual_statistic(stats, res_folder)
+
+        # store statistics
+        all_statistics = concat([all_statistics, stats])
+
+    # store statistics in a file
+    all_statistics.to_hdf('%s/summary.h5' % res_folder, 'table')
 
     # compute aggregated statistic for each version of the simulator
-    pro = aggregate_statistics(stats, res_folder)
+    pro = aggregate_statistics(all_statistics, res_folder)
     print(pro)
 
 
