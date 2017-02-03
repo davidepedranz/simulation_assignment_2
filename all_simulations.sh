@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
 
+do_simulator_no_p() {
+	echo " -> original propagation..."
+	python ./utils/configure.py "original" "$1" > simulator/config.json
+	make >> debug.log
+
+	echo " -> realistic propagation..."
+	python ./utils/configure.py "realistic" "$1" > simulator/config.json
+	make >> debug.log
+}
+
+do_simulator_p() {
+	echo " -> original propagation..."
+	python ./utils/configure.py "original" "$1" "$2" > simulator/config.json
+	make >> debug.log
+
+	echo " -> realistic propagation..."
+	python ./utils/configure.py "realistic" "$1" "$2" > simulator/config.json
+	make >> debug.log
+}
+
 ################################################################
 # SETUP
 ################################################################
@@ -20,79 +40,57 @@ mv simulator/config.json simulator/config.json.original
 # ALOHA
 ################################################################
 
-echo -e "\nAloha"
+echo ""
+echo "Aloha"
 git checkout aloha 2>> debug.log
-
-echo " -> original propagation..."
-sed -e '/"propagation":/s/\([a-z:]*\)/original/7' \
-    -e '/"simulator":/s/\([a-z:]*\)/aloha/7' \
-    -e '/"output":/s/\.{persistence}//1' \
-    simulator/config.json.original > simulator/config.json
-git checkout aloha 2> debug.log
-make >> debug.log
-
-echo " -> realistic propagation..."
-sed -e '/"propagation":/s/\([a-z:]*\)/realistic/7' \
-    -e '/"simulator":/s/\([a-z:]*\)/aloha/7' \
-    -e '/"output":/s/\.{persistence}//1' \
-    simulator/config.json.original > simulator/config.json
-make >> debug.log
-
-sleep 10
+do_simulator_no_p "aloha"
 
 
 ################################################################
 # TRIVIAL CARRIER SENSING
 ################################################################
 
-echo -e "\nTrivial Carrier Sensing"
+echo ""
+echo "Trivial"
 git checkout trivial 2>> debug.log
-
-echo " -> original propagation..."
-sed -e '/"propagation":/s/\([a-z:]*\)/original/7' \
-    -e '/"simulator":/s/\([a-z:]*\)/trivial/7' \
-    -e '/"output":/s/\.{persistence}//1' \
-    simulator/config.json.original > simulator/config.json
-make >> debug.log
-
-echo " -> realistic propagation..."
-sed -e '/"propagation":/s/\([a-z:]*\)/realistic/7' \
-    -e '/"simulator":/s/\([a-z:]*\)/trivial/7' \
-    -e '/"output":/s/\.{persistence}//1' \
-    simulator/config.json.original > simulator/config.json
-make >> debug.log
-
-sleep 10
+do_simulator_no_p "trivial"
 
 
 ################################################################
 # SIMPLE CARRIER SENSING
 ################################################################
 
-echo -e "\nSimple Carrier Sensing (p = 0.5)"
+echo ""
+echo "Simple Carrier Sensing (p = 0.0)"
 git checkout simple 2>> debug.log
+do_simulator_p "simple" "0.0"
 
-echo " -> original propagation..."
-sed -e '/"propagation":/s/\([a-z:]*\)/original/7' \
-    -e '/"simulator":/s/\([a-z:]*\)/simple/7' \
-    -e '/"persistence":/s/\([0-9].[0-9]\)/0.5/1' \
-    simulator/config.json.original > simulator/config.json
-make >> debug.log
+echo ""
+echo "Simple Carrier Sensing (p = 0.25)"
+git checkout simple 2>> debug.log
+do_simulator_p "simple" "0.25"
 
-echo " -> realistic propagation..."
-sed -e '/"propagation":/s/\([a-z:]*\)/realistic/7' \
-    -e '/"simulator":/s/\([a-z:]*\)/simple/7' \
-    -e '/"persistence":/s/\([0-9].[0-9]\)/0.5/1' \
-    simulator/config.json.original > simulator/config.json
-make >> debug.log
+echo ""
+echo "Simple Carrier Sensing (p = 0.5)"
+git checkout simple 2>> debug.log
+do_simulator_p "simple" "0.5"
 
-sleep 10
+echo ""
+echo "Simple Carrier Sensing (p = 0.75)"
+git checkout simple 2>> debug.log
+do_simulator_p "simple" "0.75"
+
+echo ""
+echo "Simple Carrier Sensing (p = 1.0)"
+git checkout simple 2>> debug.log
+do_simulator_p "simple" "1.0"
 
 
 ################################################################
 # PROCESS
 ################################################################
 
+git checkout master 2>> debug.log
 python process/process.py
 
 
@@ -100,7 +98,9 @@ python process/process.py
 # CLEANUP
 ################################################################
 
-echo -e "\nRestoring original configuration file...\n"
+echo ""
+echo "Restoring original configuration file..."
+echo ""
 mv simulator/config.json.original simulator/config.json
 git checkout master 2>> debug.log
 rm debug.log
