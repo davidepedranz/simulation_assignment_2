@@ -87,7 +87,7 @@ class Node(Module):
         # time needed to transmit a packet with the maximum size
         self.packet_max_tx_time = self.maxsize * 8.0 / self.datarate
         # p-persistence probability [simple carrier sensing]
-        self.p_persistence = config.get_param(Node.PERSISTENCE)
+        self.p_persistence = float(config.get_param(Node.PERSISTENCE))
         # timeout time for the rx timeout event. set as the time needed to
         # transmit a packet of the maximum size plus a small amount of 10
         # microseconds
