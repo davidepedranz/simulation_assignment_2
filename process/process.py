@@ -4,10 +4,7 @@ import os
 import sys
 from collections import OrderedDict
 from pandas import DataFrame, concat, read_csv, read_hdf
-import matplotlib as mpl
-
-mpl.use('Agg')
-import matplotlib.pyplot as plt
+import plots
 
 # possible packet states
 # NB: make sure this codes match to the one used by the Log class
@@ -49,10 +46,14 @@ def parse_file_name(name):
     :return: Dictionary of the parameters used to run the simulation.
     """
     tokens = os.path.splitext(name)[0].split("_")
+    a = tokens[1].split('.')
     return {
-        'simulator': tokens[1],
+        'id': tokens[1],
         'lambda': float(tokens[2]),
-        'seed': float(tokens[3])
+        'seed': float(tokens[3]),
+        'propagation': a[0],
+        'simulator': a[1],
+        'p': a[2] + '.' + a[3] if len(a) == 4 else '_'
     }
 
 
@@ -136,7 +137,10 @@ def process_csv_raw_files(folder):
         current_stats = compute_stats_single_run(current_csv, params['lambda'])
 
         # add columns
-        current_stats.insert(0, 'simulator', params['simulator'])
+        current_stats.insert(0, 'id', params['id'])
+        current_stats.insert(1, 'propagation', params['propagation'])
+        current_stats.insert(2, 'simulator', params['simulator'])
+        current_stats.insert(3, 'p', params['p'])
         current_stats['lambda'] = params['lambda']
         current_stats['seed'] = params['seed']
 
@@ -147,143 +151,31 @@ def process_csv_raw_files(folder):
     return all_statistics.reset_index(drop=True)
 
 
-def plot_individual_metric(nodes, loads, metrics, path, title, y_label,
-                           y_lim=(0, 1.05)):
-    figure = plt.figure()
-    ax = figure.add_subplot(111)
-    for (node, metric) in zip(nodes, metrics):
-        ax.plot(loads, metric, label=str(node), marker='o')
-    ax.set_title(title, fontsize=16, y=1.02)
-    ax.legend(shadow=True, loc='center left', bbox_to_anchor=(1.02, 0.5))
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.92, box.height])
-    ax.set_xlabel('Total offered load (Mbps)')
-    ax.set_ylabel(y_label)
-    ax.set_ylim(y_lim)
-    ax.grid(True)
-    figure.savefig(path)
-    plt.close(figure)
-
-
-def plot_individual_statistic(stat, folder):
-    # process each version of the simulator independently from each other
-    versions = stat.simulator.unique()
-    for v in versions:
-
-        # extract current data
-        df = stat.query('simulator=="' + v + '"')
-
-        # x-axis: lambda ... load on network
-        loads = list(df['load'].unique())
-
-        # accumulators for the metrics
-        crs = []
-        drs = []
-        trs = []
-        ccs = []
-
-        # extract nodes and metrics for each node
-        nodes = df['dst'].unique()
-        for n in nodes:
-            crs.append(list(df.query('dst==' + str(n))['cr']))
-            drs.append(list(df.query('dst==' + str(n))['dr']))
-            trs.append(list(df.query('dst==' + str(n))['tr']))
-            ccs.append(list(df.query('dst==' + str(n))['cc']))
-
-        # plot the 3 metrics
-        base = '0_plot_%s_' % v
-        plot_individual_metric(nodes, loads, crs, folder + base + 'crs.png',
-                               'Collision Rate',
-                               'Collision rate at receiver (Mbps)')
-        plot_individual_metric(nodes, loads, drs, folder + base + 'drs.png',
-                               'Packet Drop Rate',
-                               'Packet drop rate at the sender')
-        plot_individual_metric(nodes, loads, trs, folder + base + 'trs.png',
-                               'Throughput', 'Throughput at receiver (Mbps)',
-                               y_lim=(0, 3))
-        plot_individual_metric(nodes, loads, ccs, folder + base + 'ccs.png',
-                               'Channel Corruption Rate',
-                               'Channel corruption rate (Mbps)')
-
-
-def aggregate_statistics(stats, folder):
+def aggregate_statistics(stats):
     print("Aggregated stats by simulator and load ... \n")
 
     # aggregate by simulator version and load
-    agg = stats.groupby(['simulator', 'load'], as_index=False).agg({
-        'cr': {
-            'cr_mean': 'mean'
-        },
-        'dr': {
-            'dr_mean': 'mean'
-        },
-        'tr': {
-            'tr_mean': 'mean'
-        },
-        'cc': {
-            'cc_mean': 'mean'
+    agg = stats.groupby(['id', 'simulator', 'propagation', 'p', 'load'],
+                        as_index=False).agg(
+        {
+            'cr': {
+                'cr_mean': 'mean'
+            },
+            'dr': {
+                'dr_mean': 'mean'
+            },
+            'tr': {
+                'tr_mean': 'mean'
+            },
+            'cc': {
+                'cc_mean': 'mean'
+            }
         }
-    })
+    )
 
     # remove multi-index from columns
     agg.columns = agg.columns.droplevel(1)
-
-    # plots
-    versions = agg.simulator.unique()
-    loads = []
-    crs = []
-    drs = []
-    trs = []
-    ccs = []
-
-    # extract metrics for each simulator
-    for v in versions:
-        # extract current data
-        df = agg.query('simulator=="' + v + '"')
-
-        # extract metrics
-        loads.append(list(df['load']))
-        crs.append(list(df['cr']))
-        drs.append(list(df['dr']))
-        trs.append(list(df['tr']))
-        ccs.append(list(df['cc']))
-
-    # plot
-    base = '1_compare_simulators_'
-    plot_aggregated_metric(versions, loads, crs, folder + base + 'crs.png',
-                           'Collision Rate',
-                           'Collision rate at receiver (Mbps)')
-    plot_aggregated_metric(versions, loads, drs, folder + base + 'drs.png',
-                           'Packet Drop Rate',
-                           'Packet drop rate at the sender')
-    plot_aggregated_metric(versions, loads, trs, folder + base + 'trs.png',
-                           'Throughput', 'Throughput at receiver (Mbps)',
-                           y_lim=(0, 3))
-    plot_aggregated_metric(versions, loads, ccs, folder + base + 'ccs.png',
-                           'Channel Corruption Rate',
-                           'Channel corruption rate (Mbps)')
-
     return agg
-
-
-def plot_aggregated_metric(versions, loads, metrics, path, title, y_label,
-                           y_lim=(0, 1.05)):
-    figure = plt.figure()
-    ax = figure.add_subplot(111)
-    for (v, l, m) in zip(versions, loads, metrics):
-        ax.plot(l, m, label=str(v), marker='o')
-    ax.set_title(title, fontsize=16, y=1.02)
-    ax.legend(shadow=True, loc='upper center', bbox_to_anchor=(0.5, -0.18),
-              ncol=3)
-    box = ax.get_position()
-    ax.set_position(
-        [box.x0, box.y0 + box.height * 0.15, box.width, box.height * 0.85])
-    ax.set_xlabel('Total offered load (Mbps)')
-    ax.set_ylabel(y_label)
-    ax.set_ylim(y_lim)
-    ax.grid(True)
-    figure.savefig(path)
-    plt.close(figure)
 
 
 def main():
@@ -311,22 +203,23 @@ def main():
         print('Using cached statistics...')
         all_statistics = read_hdf(aggregated_file)
 
-    # store statistics in a file
-    all_statistics.to_hdf('%s/summary.h5' % folder, 'table')
-
     # get rid of the seeds (take the average over all seeds)
     mean_stats = all_statistics \
-        .groupby(['simulator', 'dst', 'load', 'lambda'], as_index=False) \
+        .groupby(['id', 'propagation', 'simulator', 'p',
+                  'dst', 'load', 'lambda'], as_index=False) \
         .mean() \
         .reset_index(level=3, drop=True) \
         .drop('seed', 1)
 
     # plot graphs for each simulator
-    plot_individual_statistic(mean_stats, folder)
+    # plots.individual_statistic(mean_stats, folder)
 
     # compute aggregated statistic for each version of the simulator
-    pro = aggregate_statistics(all_statistics, folder)
-    print(pro)
+    pro = aggregate_statistics(mean_stats)
+    plots.aggregated_statistics(pro, folder)
+
+    # store aggregated statistic in a file
+    pro.to_hdf('%s/summary.h5' % folder, 'summary', format='table')
 
 
 # entry point
