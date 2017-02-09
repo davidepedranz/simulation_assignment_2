@@ -13,9 +13,9 @@
 #
 # Copyright (C) 2016 Michele Segata <segata@ccs-labs.org>
 
-import os
 import sim
 from packet import Packet
+from utils import locate, mkdir_for_file
 
 
 class Log:
@@ -59,9 +59,8 @@ class Log:
         self.log_states = log_states
 
         # open the file
-        __location__ = os.path.realpath(
-            os.path.join(os.getcwd(), os.path.dirname(__file__)))
-        path = os.path.join(__location__, output_file)
+        path = locate(output_file)
+        mkdir_for_file(path)
         self.log_file = open(path, "w")
         self.log_file.write("time,src,dst,event,size\n")
 

@@ -14,9 +14,10 @@
 # Copyright (C) 2016 Michele Segata <segata@ccs-labs.org>
 
 import json
-import os
 import re
 import sys
+
+from utils import locate
 
 
 class Config:
@@ -127,9 +128,7 @@ class Config:
         :returns: the content of the file without comments
         """
         # load the file
-        __location__ = os.path.realpath(
-            os.path.join(os.getcwd(), os.path.dirname(__file__)))
-        path = os.path.join(__location__, json_file)
+        path = locate(json_file)
         content = ''.join(open(path).readlines())
 
         # looking for comments
