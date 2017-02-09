@@ -153,7 +153,9 @@ def process_csv_raw_files(folder):
 
 
 def aggregate_statistics(stats):
-    print("Aggregated stats by simulator and load ... \n")
+    """
+    Aggregate the raw statistics.
+    """
 
     # aggregate by simulator version and load
     agg = stats.groupby(['id', 'simulator', 'propagation', 'p', 'load'],
@@ -187,13 +189,17 @@ def main():
     # compute the location of the CSV files
     csv_folder = locate('../output/')
 
+    # compute the location for the processing
+    results_folder = locate('../results/')
+    mkdir(results_folder)
+
     # compute the statistics
     # use cache if available, otherwise load data from raw CSV
-    aggregated_file = "%s/000_cache.h5" % csv_folder
+    aggregated_file = results_folder + 'statistics.h5'
     if not os.path.isfile(aggregated_file):
         print('Loading CSV files...')
         all_statistics = process_csv_raw_files(csv_folder)
-        all_statistics.to_hdf(aggregated_file, 'fixed')
+        all_statistics.to_hdf(aggregated_file, 'statistics', format='fixed')
     else:
         print('Using cached statistics...')
         all_statistics = read_hdf(aggregated_file)
@@ -207,18 +213,21 @@ def main():
         .drop('seed', 1)
 
     # make sure the plots folder exists
-    plots_folder = locate('../plots/')
+    plots_folder = locate('../results/plots/')
     mkdir(plots_folder)
 
     # plot graphs for each simulator
+    print("Plotting individual statistics...")
     plots.individual_statistic(mean_stats, plots_folder)
 
     # compute aggregated statistic for each version of the simulator
+    print("Aggregated stats by simulator and load...")
     pro = aggregate_statistics(mean_stats)
+    print("Plotting aggregated statistics...")
     plots.aggregated_statistics(pro, plots_folder)
 
     # store aggregated statistic in a file
-    pro.to_hdf('%s/summary.h5' % csv_folder, 'summary', format='table')
+    pro.to_hdf(results_folder + 'summary.h5', 'summary', format='table')
 
 
 # entry point

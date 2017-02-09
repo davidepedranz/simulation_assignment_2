@@ -13,4 +13,4 @@ venv/
 ############################
 output/
 history/
-plots/
+results/
