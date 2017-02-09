@@ -91,7 +91,7 @@ do_simulator_p "simple" "1.0"
 ################################################################
 
 git checkout master 2>> debug.log
-python process/process.py
+python utils/process.py
 
 
 ################################################################

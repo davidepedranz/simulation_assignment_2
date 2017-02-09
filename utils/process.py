@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
 import os
-import sys
+import plots
 from collections import OrderedDict
 from pandas import DataFrame, concat, read_csv, read_hdf
-import plots
+from utils import locate, mkdir
 
 # possible packet states
 # NB: make sure this codes match to the one used by the Log class
+
 PKT_RECEIVING = 0
 PKT_RECEIVED = 1
 PKT_CORRUPTED = 2
@@ -184,20 +185,14 @@ def main():
     """
 
     # compute the location of the CSV files
-    __location__ = os.path.realpath(
-        os.path.join(os.getcwd(), os.path.dirname(__file__)))
-    folder = os.path.join(__location__, "../output/")
-
-    # ... or read it as a parameter of the script
-    if len(sys.argv) != 1:
-        folder = sys.argv[1]
+    csv_folder = locate('../output/')
 
     # compute the statistics
     # use cache if available, otherwise load data from raw CSV
-    aggregated_file = "%s/000_cache.h5" % folder
+    aggregated_file = "%s/000_cache.h5" % csv_folder
     if not os.path.isfile(aggregated_file):
         print('Loading CSV files...')
-        all_statistics = process_csv_raw_files(folder)
+        all_statistics = process_csv_raw_files(csv_folder)
         all_statistics.to_hdf(aggregated_file, 'fixed')
     else:
         print('Using cached statistics...')
@@ -211,15 +206,19 @@ def main():
         .reset_index(level=3, drop=True) \
         .drop('seed', 1)
 
+    # make sure the plots folder exists
+    plots_folder = locate('../plots/')
+    mkdir(plots_folder)
+
     # plot graphs for each simulator
-    # plots.individual_statistic(mean_stats, folder)
+    plots.individual_statistic(mean_stats, plots_folder)
 
     # compute aggregated statistic for each version of the simulator
     pro = aggregate_statistics(mean_stats)
-    plots.aggregated_statistics(pro, folder)
+    plots.aggregated_statistics(pro, plots_folder)
 
     # store aggregated statistic in a file
-    pro.to_hdf('%s/summary.h5' % folder, 'summary', format='table')
+    pro.to_hdf('%s/summary.h5' % csv_folder, 'summary', format='table')
 
 
 # entry point

@@ -90,9 +90,9 @@ def main():
     _range = config['simulation']['range']
 
     # plot topology
+    directory = locate('../plots/topology/')
+    mkdir(directory)
     for f in ['png', 'eps']:
-        directory = locate('../plots/' + f + '/')
-        mkdir(directory)
         draw_nodes(nodes, _range, directory + 'topology.' + f)
 
 
