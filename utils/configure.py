@@ -1,42 +1,7 @@
 import sys
 import json
-import os
-import re
-from collections import OrderedDict
 
-
-def load_config(json_file):
-    """
-    Load the configuration of the simulator from a JSON file.
-    :param json_file: JSON file (relative path).
-    :return: Dictionary with the configuration.
-    """
-
-    # locate the file the file
-    __location__ = os.path.realpath(
-        os.path.join(os.getcwd(), os.path.dirname(__file__)))
-    path = os.path.join(__location__, json_file)
-    content = ''.join(open(path).readlines())
-
-    # remove comments
-    cr = re.compile('(^)?[^\S\n]*/(?:\*(.*?)\*/[^\S\n]*|/[^\n]*)($)?',
-                    re.DOTALL | re.MULTILINE)
-    match = cr.search(content)
-    while match:
-        # single line comment
-        content = content[:match.start()] + content[match.end():]
-        match = cr.search(content)
-
-    # parse to json
-    try:
-        cfg = json.loads(content, object_pairs_hook=OrderedDict)
-    except Exception as e:
-        print('Unable to parse ' + json_file)
-        print(e)
-        sys.exit(1)
-
-    # return the configuration
-    return cfg
+from utils import load_config
 
 
 def main():
