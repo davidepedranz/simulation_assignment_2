@@ -12,6 +12,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright (C) 2016 Michele Segata <segata@ccs-labs.org>
+#
+# Modified by Davide Pedranz <davide.pedranz@gmail.com>
 
 import sys
 from module import Module
