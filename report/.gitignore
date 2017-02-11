@@ -1,0 +1,13 @@
+##############################
+# LaTeX
+##############################
+*.aux
+*.fdb_latexmk
+*.log
+*.bbl
+*.blg
+*.fls
+*-eps-converted-to.pdf
+
+00_main.pdf
+

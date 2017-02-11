@@ -1,0 +1,38 @@
+\section{Realistic Propagation}
+\label{sec:realistic_propagation}
+
+The first implemented change is the packets' propagation model.
+The original simulator uses a disk model: a packet is always correctly received from all and only the stations in the range of the transmitter if no collision occur.
+More formally, the receiving probability for a packet is modelled as follows:
+
+\begin{equation}
+Pr(correct\ |\ d) =
+    \left\{
+    	\begin{array}{ll}
+    		1 & \mbox{if } d < RX_{range} \\
+    		0 & \mbox{otherwise}
+    	\end{array}
+    \right.
+    \label{eq:original}
+\end{equation}
+
+In the real world, however, signals soften with the distance.
+A simple model of this phenomena is the following:
+
+\begin{equation}
+Pr(correct\ |\ d) =
+    \left\{
+    	\begin{array}{ll}
+    		1 - \frac{d}{RX_{range}} & \mbox{if } d < RX_{range} \\
+    		0 & \mbox{otherwise}
+    	\end{array}
+    \right.
+    \label{eq:realistic}
+\end{equation}
+
+It is possible to specify the model to use in the simulator using the \texttt{propagation} parameter in the configuration file.
+Allowed values are \texttt{original} for the model of \cref{eq:original} or \texttt{realistic} for the model of \cref{eq:realistic}.
+
+If the realistic model is selected, the channel tags each packet with the probability of correct receiving for the receiver.
+When a node processes a not corrupted packet, a random variable from a Uniform distribution between $0$ and $1$ is extracted: if the value is higher or equal to the probability of correct receiving, the packet is marked as correctly received, otherwise it is marked as corrupted.
+The simulator distinguish between ``corrupted for a collision'' and ``corrupted because of the distance'' to allow a detailed analysis of the results.

@@ -1,0 +1,75 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{silence}\WarningsOff[latexfont]
+
+\usepackage{amsmath}
+
+\RequirePackage{tikz}[2010/10/13]
+\usetikzlibrary{arrows,automata,calc,intersections,patterns,decorations.pathmorphing,decorations.pathreplacing}
+
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{url}
+\usepackage[caption=false,font=footnotesize]{subfig}
+\usepackage[binary-units,per-mode=symbol]{siunitx}
+\sisetup{list-final-separator = {, and }}
+\usepackage{booktabs}
+\usepackage{pifont}
+\usepackage{microtype}
+\usepackage{textcomp}
+\usepackage[american]{babel}
+\usepackage[noabbrev,capitalise]{cleveref}
+\usepackage{xspace}
+\usepackage{hyphenat}
+\usepackage[draft,inline,nomargin,index]{fixme}
+\fxsetup{theme=color}
+\usepackage{grffile}
+\usepackage{xfrac}
+\usepackage{multirow}
+\RequirePackage{xstring}
+\RequirePackage{xparse}
+\RequirePackage[index=true]{acro}
+
+\NewDocumentCommand\acrodef{mO{#1}mG{}}{\DeclareAcronym{#1}{short={#2}, long={#3}, #4}}
+\NewDocumentCommand\acused{m}{\acuse{#1}}
+
+\usepackage{upquote}
+
+\acrodef{DES}{Discrete Event Simulation}
+\acrodef{MAC}{Medium Access Control}
+
+\begin{document}
+
+\title{Python Simulator Extension}
+\author{
+	\IEEEauthorblockN{Davide Pedranz, Mat. number 189295}
+	\texttt{davide.pedranz@studenti.unitn.it}
+}
+
+\maketitle
+
+\begin{abstract}
+Simulators are powerful tools to analyze the performances of a system.
+They can be used to evaluate a system before building it, compare different design choices and validate models.
+In this assignment, starting from a discrete event simulator for the Aloha MAC protocol, we will implement simulators some variations of the protocol and evaluate the performances as a function of the load offered to the network.
+\end{abstract}
+
+\acresetall
+
+\input{01_introduction}
+\input{02_aloha}
+\input{03_original_simulator}
+\input{04_realistic_propagation}
+\input{05_trivial_carrier_sensing}
+\input{06_simple_carrier_sensing}
+\input{07_simulations}
+\input{08_metrics}
+\input{09_performances}
+\input{10_conclusion}
+
+% \bibliographystyle{IEEEtran}
+% \bibliography{references}
+
+\end{document}

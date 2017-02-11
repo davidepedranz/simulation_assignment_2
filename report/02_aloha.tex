@@ -1,0 +1,15 @@
+\section{Aloha}
+\label{sec:aloha}
+
+A \ac{MAC} protocol defines how stations access a shared channel in order to transmit messages to the others.
+Aloha is a very simple \ac{MAC} protocol developed by Norman Abramson and colleagues at the University of Hawaii in the 1970s to realize a broadcasting communication between nodes spread on different islands in the archipelago. 
+
+The behaviour of the original Aloha is the following: when a packet arrives to the station, it is immediately transmitted to all stations in the communication range.
+When idle, the station listens for variations of energy in the channel in order to be able to detect and receive incoming packets.
+After transmitting or receiving a packet, a small amount of time is required to process it.
+If new packets arrive while the station is already transmitting, receiving or processing a packet, they are queued and will be transmitted as soon as the station finishes the current action.
+If multiple packets are transmitted at the same time, they are very likely to collide and be corrupted.
+
+Aloha does not try to avoid or detect collisions.
+In case of collisions, the packet are not recognizable and thus simple discarded.
+In other words, there is no guarantee that a packet is correctly received by the other stations.
