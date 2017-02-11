@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 
+simulate() {
+	echo "Running simulations in parallel..."
+	python simulator/main.py -l | shuf | parallel -j 7 --no-notice
+}
+
 do_simulator_no_p() {
 	echo " -> original propagation..."
 	python ./utils/configure.py "original" "$1" > simulator/config.json
-	make >> debug.log
+	simulate >> debug.log
 
 	echo " -> realistic propagation..."
 	python ./utils/configure.py "realistic" "$1" > simulator/config.json
-	make >> debug.log
+	simulate >> debug.log
 }
 
 do_simulator_p() {
