@@ -1,7 +1,7 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-In this work, we build a simulator for a simple \ac{MAC} protocol and analyzed the performances of some variants of Aloha.
+In this work, we built a simulator for a simple \ac{MAC} protocol and analyzed the performances of some variants of Aloha.
 We started with a description of the original simulator for Aloha.
 Then, we described the modifications done to implement the realistic propagation model (\cref{sec:realistic_propagation}), Trivial Carrier Sensing and Simple Carrier Sensing.
 Finally, we compared the performances of the different protocols for both propagation models and different traffic loads.
@@ -9,6 +9,6 @@ Finally, we compared the performances of the different protocols for both propag
 According to the run simulations, Aloha is the worst protocol among the analyzed ones.
 Trivial Carrier Sensing is slightly better than Aloha, but has still problems with high loads on the channel.
 Simple Carrier Sensing achieved considerably better performances then Trivial Carrier Sensing, most probably for its random nature that breaks the synchronicity between different stations.
-Among the possible values for the persistence, $p = 1$ seems to be the best choice.
-No protocol can handle high load on the network: in fact, the throughput decreases at about $10 Mbps$ of load.
+Among the possible values for the persistence, $p = \num{0}$ seems to be the best choice.
+No protocol can handle high load on the network: in fact, the throughput decreases at about \SI{10}{Mbps} of load.
 The same results are valid for the original propagation model.

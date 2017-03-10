@@ -98,7 +98,7 @@ def agg_metric(legend, loc, loads, metrics, path, name, title, y_label,
     """
 
     # generate 2 formats, 1 for LaTeX, 1 for visualization
-    for ext in ['eps', 'png']:
+    for ext in ['pdf', 'png']:
 
         # make sure the destination exits
         directory = path + ext + '/'
@@ -150,7 +150,12 @@ def aggregated_statistics(agg, folder):
 
     def id_to_legend(_id):
         s = _id.split('.')
-        name = (' (p = %s.%s)' % (s[2], s[3]) if len(s) == 4 else '')
+        if len(s) == 4:
+            # NB: for the report, we use 1-p instead of p!!!
+            persistence = 1 - float('%s.%s' % (s[2], s[3]))
+            name = ' (p = %.2f)' % persistence
+        else:
+            name = ''
         return s[1].capitalize() + name
 
     # compute right directory

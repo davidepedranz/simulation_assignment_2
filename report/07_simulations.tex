@@ -2,7 +2,7 @@
 \label{sec:simulation}
 
 The simulator models the interarrival time between packets to transmit to a station with an exponential distribution.
-The size of each packet is extracted from a uniform distribution between $32$ and $1460 B$.
+The size of each packet is extracted from a uniform distribution between \num{32} and \SI{1460}{\byte}.
 Each station has a limited amount of memory, so it can store at most $2$ packets in a queue.
 Packets that do not fit in the queue are discarded.
 All simulations use the same network topology, shown in \cref{fig:network}.

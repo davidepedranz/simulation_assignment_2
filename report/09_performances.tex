@@ -5,7 +5,7 @@
 	\centering
 	\centering
 	\includegraphics[width=\columnwidth]{figures/plots/realistic_tr}
-	\caption{Throughput of the different protocols in respect to the total load on the channel with the realistic propagation model. Simple Carrier Sensing performs better then Trivial Carrier Sensing and Aloha. The highest throughput is obtained at $10 Mbps$ of load. When the load is higher, the performances of all protocols tend to zero.}
+	\caption{Throughput of the different protocols in respect to the total load on the channel with the realistic propagation model. Simple Carrier Sensing performs better then Trivial Carrier Sensing and Aloha. The highest throughput is obtained at \SI{10}{Mbps} of load. When the load is higher, the performances of all protocols tend to zero.}
 	\label{fig:tr}
 \end{figure}
 
@@ -36,7 +36,7 @@ Unless otherwise specified, the results refer to the realistic propagation model
 
 \subsection{Protocol}
 \cref{fig:tr} show that Simple Carrier Sensing performed better then Trivial Carrier Sensing, which performed better than Aloha in terms of throughput.
-The increase in throughput is related to the reduction of collisions: indeed, it is easy to see in \cref{fig:cr}  that collision rate of Aloha saturates and Trivial Carrier Sensing tends to $1$ much quicker than Simple Carrier Sensing.
+The increase in throughput is related to the reduction of collisions: indeed, it is easy to see in \cref{fig:cr}  that collision rate of Aloha saturates and Trivial Carrier Sensing tends to \num{1} much quicker than Simple Carrier Sensing.
 Simple Carrier Sensing strategy to avoid collisions seems to be more effective then the Trivial one, which in turn is better then Aloha.
 In particular, the strategy of Trivial Carrier Sensing is not effective, since all stations will start to transmit together as soon as the channel is free.
 The random nature of Simple Carrier Sensing helps to reduce this effect.
@@ -55,8 +55,8 @@ Most packets are corrupted by collisions.
 
 \subsection{Persistence}
 The behaviour of Simple Carrier Sensing is highly dependent of the parameter $p$ used for the persistence.
-When $p$ tends to $0$, Simple Carrier Sensing behaves exactly like Trivial Carrier Sensing.
-When $p$ tends to $1$, Simple Carrier Sensing will always wait a random exponential time before transmitting a packet if the channel is occupied.
+When $p$ tends to \num{1}, Simple Carrier Sensing behaves exactly like Trivial Carrier Sensing.
+When $p$ tends to \num{0}, Simple Carrier Sensing will always wait a random exponential time before transmitting a packet if the channel is occupied.
 For intermediate values of $p$, the behaviour is a mixture.
 \cref{fig:tr} shows the throughput for different values of $p$: with the given network, higher values of $p$ correspond to a higher throughput.
 
